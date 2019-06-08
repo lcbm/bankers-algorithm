@@ -79,6 +79,15 @@ void joinThreads(pthread_t tid, void* runner){
   }
 }
 
+int * lessEqualThen(int * a, int * b, int size){
+  
+  for(int i = 0; i< size;i++){
+    if (a[i]> b[i]) return 1;
+
+  }
+
+  return 0;
+}
 //Reads the file and return the matrix[][] containing the max demand of resources
 //for each thread
 int** readMaxDemandFromFile(){
