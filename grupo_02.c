@@ -43,6 +43,10 @@ int randomNum(int max);
 int timeSleeping(); // Gera tempo em que a thread vai dormir
 void calculateNeed();
 void sleepResources(int time, int resource, int index, int thread);
+int **getMaxDemandFromFile(); // Reads the file and return the matrix containg the max number of resources for each thread for each resource type
+void printMatrix(int** matrix); // Prints a bidimentional array for testing purposes
+
+
 
 int main(int argc, const char * argv[]) {
   srand((unsigned int)time(NULL)); /* seed random number generator */
@@ -77,16 +81,6 @@ void joinThreads(pthread_t tid, void* runner){
     pthread_join(tid, NULL);
     printf("Threads joined: %d\n", threadsJoined + 1);
   }
-}
-
-//Reads the file and return the matrix[][] containing the max demand of resources
-//for each thread
-int** readMaxDemandFromFile(){
-  int** maxDemandForEachThread;
-
-  //ARTHUR : TO FAZENDO ISSO EM OUTRO ARQUIVO  
-  //fp = fopen(FILE_NAME,"r");
-  return maxDemandForEachThread;
 }
 
 int randomNum(int max){
@@ -137,4 +131,51 @@ void forkThis(){
     printf("Parent process is Waiting for child process!\n");
     wait(NULL);
   }
+}
+
+int **getMaxDemandFromFile()
+{
+    int **matrixMaxDemand;
+    int i;
+    int j;
+    int currentValue;
+
+    FILE *fp;
+    fp = fopen(FILE_NAME, "r");
+
+    if (fp == NULL)
+    {
+        printf("File not found");
+        exit(EXIT_FAILURE);
+    }
+
+    matrixMaxDemand = calloc(N_THREADS, sizeof(int *));
+    for(i = 0; i < N_RESOURCES; i++){
+        matrixMaxDemand[i] = calloc(N_RESOURCES, sizeof(int));
+    }
+
+    i = 0;
+    while (i < N_THREADS || !feof(fp))
+    {
+        j = 0; 
+        while (j < N_RESOURCES || !feof(fp))
+        {
+            fscanf(fp, "%d", &currentValue);
+            matrixMaxDemand[i][j] = currentValue;
+            j++;
+        }
+        i++;
+    }
+    return matrixMaxDemand;
+}
+
+void printMatrix(int** matrix){
+    int i;
+    int j;
+    for(i = 0; i < N_THREADS; i++){
+        for( j = 0; j < N_RESOURCES; j++){
+            printf("%d ", matrix[i][j]);
+        }
+        printf("\n");
+    }
 }
