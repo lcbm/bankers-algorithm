@@ -34,6 +34,8 @@ int allocated[N_THREADS][N_RESOURCES];  /* Quanto de cada recurso cada processo 
 int max[N_THREADS][N_RESOURCES];        /* Quanto de cada recurso cada processo pode reservar */
 int need[N_THREADS][N_RESOURCES];       /* Quanto de cada recurso cada processo precisa */
 int numTest;                            /* a */ 
+int isSafeState(int ** currentAllocated, int ** max ,int ** need  , int * available);
+
 
 /* prototype functions */
 void createThreads(pthread_t tid, void* runner);
@@ -61,6 +63,7 @@ void *runner(void * arg){
   pthread_exit(NULL);
 }
 
+
 void createThreads(pthread_t tid, void* runner){
   printf("Creating threads...");
 
@@ -79,15 +82,7 @@ void joinThreads(pthread_t tid, void* runner){
   }
 }
 
-int * lessEqualThan(int * a, int * b, int size){
-  
-  for(int i = 0; i< size;i++){
-    if (a[i]> b[i]) return 1;
 
-  }
-
-  return 0;
-}
 //Reads the file and return the matrix[][] containing the max demand of resources
 //for each thread
 int** readMaxDemandFromFile(){
