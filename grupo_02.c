@@ -23,39 +23,62 @@
 #include <sys/wait.h> /* required by some linux systems */
 
 // Testar com argv
-#define FILE_NAME "fileName.txt"
-#define N_THREADS 1        /* number of threads to be created */
-#define N_RESOURCES 5 /* number of resource types */
-#define MAX_TIME_SLEEP 5   /* Max number thread can Sleep */
-#define FILE_NAME "./file.txt"
+#define FILE_NAME "threads.txt"
+int  N_THREADS;         /* number of threads to be created */
+int  N_RESOURCES = 3;      /* number of resource types */
+int  MAX_TIME_SLEEP;   /* Max number thread can Sleep */
 
 /* global variables */
-int available[N_RESOURCES];             /* Quanto de cada recurso o sistema tem disponivel */
-int allocated[N_THREADS][N_RESOURCES];  /* Quanto de cada recurso cada processo reservou p/ uso*/
-int max[N_THREADS][N_RESOURCES];        /* Quanto de cada recurso cada processo pode reservar */
-int need[N_THREADS][N_RESOURCES];       /* Quanto de cada recurso cada processo precisa */
-int numTest;                            /* a */
+int * available;   /* Quanto de cada recurso o sistema tem disponivel */
+int ** allocated;  /* Quanto de cada recurso cada processo reservou p/ uso*/
+int ** max;        /* Quanto de cada recurso cada processo pode reservar */
+int ** need;       /* Quanto de cada recurso cada processo precisa */
 
-/* prototype functions */
-void createThreads(pthread_t tid, void* runner);
+/* Prototype functions */
+void createThreads(pthread_t * tid, void* runner){
 void joinThreads(pthread_t tid, void* runner);
 void *runner(void * arg);
 int randomNum(int max);
-int timeSleeping(); // Gera tempo em que a thread vai dormir
+int timeSleeping();
 void calculateNeed();
 void sleepResources(int time, int resource, int index, int thread);
-
-// Function: Reads the file and return the matrix containg the max number of resources for each thread for each resource type
 int **getMaxDemandFromFile();
-
-//Function: prints a bidimentional array for testing purposes
+int isSafeState(void);
+int isArrayTrue(int a[], int size);
+int lessEqualThan(int *a, int *b, int size);
+void allocateResources(int *request, int process);
+void addArray(int *a, int *b, int size);
+void subArray(int *a, int *b, int size);
+void printState(void);
 void printMatrix();
+
+
 
 int main(int argc, const char * argv[]) {
   srand((unsigned int)time(NULL)); /* seed random number generator */
   max = getMaxDemandFromFile();
-  pthread_t tid;
-  createThreads(tid, runner);
+
+
+  N_THREADS = sizeof(max)/sizeof(int)*sizeof(N_RESOURCES);
+
+
+  pthread_t pids[N_THREADS];
+
+  createThreads(pids, runner);
+
+  /* printState();
+  printf("\nIs safe? %d\n", isSafeState());
+
+  int request[N_RESOURCES] = {1,0,2};
+  allocateResources(request, 1);
+  printState();
+  printf("\nIs safe? %d\n", isSafeState());
+
+  int request2[N_RESOURCES] = {0,2,0};
+  allocateResources(request2, 0);
+  printState();
+  printf("\nIs safe? %d\n", isSafeState()); */
+
   joinThreads(tid, runner);
   return 0;
 }
@@ -67,20 +90,20 @@ void *runner(void * arg){
   pthread_exit(NULL);
 }
 
-void createThreads(pthread_t tid, void* runner){
+void createThreads(pthread_t * tid, void* runner){
   printf("Creating threads...");
 
   for(int threadsCreated = 0; threadsCreated < N_THREADS; threadsCreated++) {
-    pthread_create(&tid, NULL, runner, NULL);
+    pthread_create(&tid[threadsCreated], NULL, runner, NULL);
     printf("Threads created: %d\n", threadsCreated + 1);
   }
 }
 
-void joinThreads(pthread_t tid, void* runner){
+void joinThreads(pthread_t * tid, void* runner){
   printf("Joining threads...");
 
   for(int threadsJoined = 0; threadsJoined < N_THREADS; threadsJoined++) {
-    pthread_join(tid, NULL);
+    pthread_join(tid[threadsJoined], NULL);
     printf("Threads joined: %d\n", threadsJoined + 1);
   }
 }
@@ -141,8 +164,6 @@ void sleepResources(int time, int resource, int index, int thread){
   //  > sleep no time passado pela thread
   //  > Adicionar o recurso no available -> "A thread ja usou um recurso"
   //  > Subtrair de allocated
-
-
 }
 
 /* not done yet */
@@ -162,4 +183,113 @@ void forkThis(){
     printf("Parent process is Waiting for child process!\n");
     wait(NULL);
   }
+}
+
+/*
+ * Checks if the system can allocate resources to each thread
+ * (up to its maximum) in some order and still avoid a deadlock
+ */
+int isSafeState(void)
+{
+    int work[N_RESOURCES];
+    for (int index = 0; index < N_RESOURCES; index++)
+        work[index] = available[index];
+
+    int finish[N_THREADS];
+    for (int index = 0; index < N_THREADS; index++)
+        finish[index] = 0;
+
+    while (!isArrayTrue(finish, N_THREADS)) {
+        int findOne = 0;
+        for (int index = 0; index < N_THREADS; index++) {
+            int isLessEqualThanNeed = lessEqualThan(need[index], work, N_RESOURCES);
+            if(!finish[index] && isLessEqualThanNeed) {
+                addArray(work, allocated[index], N_RESOURCES);
+                finish[index] = 1;
+                findOne = 1;
+            }
+        }
+
+        if (!findOne)
+            return 0;
+    }
+
+    return 1;
+}
+
+/* Checks if all items in array are true */
+int isArrayTrue(int a[], int size)
+{
+    for (int index = 0; index < size; index++) {
+        if(a[index] != 1)
+            return 0;
+    }
+
+    return 1;
+}
+
+/* Compares values of each index of two arrays */
+int lessEqualThan(int *a, int *b, int size)
+{
+    for (int index = 0; index < size; index++) {
+        if (a[index] > b[index])
+            return 0;
+    }
+
+    return 1;
+}
+
+/* Aloca recursos */
+void allocateResources(int *request, int process)
+{
+    subArray(available, request, N_RESOURCES);
+    subArray(need[process], request, N_RESOURCES);
+    addArray(allocated[process], request, N_RESOURCES);
+}
+
+/* Soma dois arrays */
+void addArray(int *a, int *b, int size)
+{
+    for (int index = 0; index < size; index++)
+        a[index] += b[index];
+}
+
+/* Subtrai dois arrays */
+void subArray(int *a, int *b, int size)
+{
+    for (int index = 0; index < size; index++)
+        a[index] -= b[index];
+}
+
+/* Printa estado atual das matrizes/vetor globais */
+void printState(void)
+{
+    printf("\nAvailable\n");
+    for (int i = 0; i < N_RESOURCES; i++)
+        printf("%d ", available[i]);
+    printf("\n");
+
+    printf("\nMax\n");
+    for (int i = 0; i < N_THREADS; i++) {
+        for (int j = 0; j< N_RESOURCES; j++)
+            printf("%d ", max[i][j]);
+
+        printf("\n");
+    }
+
+    printf("\nallocated\n");
+    for (int i = 0; i < N_THREADS; i++) {
+        for (int j = 0; j < N_RESOURCES; j++)
+            printf("%d ", allocated[i][j]);
+
+        printf("\n");
+    }
+
+    printf("\nNeed\n");
+    for (int i = 0; i < N_THREADS; i++) {
+        for (int j = 0; j< N_RESOURCES; j++)
+            printf("%d ", need[i][j]);
+
+    printf("\n");
+    }
 }
